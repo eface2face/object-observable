@@ -1,4 +1,4 @@
-var setImmediate = require('core-js/library/fn/set-immediate');
+var asap = require('asap');
 var EventEmitter = require('events');
 var debug = require('debug')('object-observable');
 
@@ -15,39 +15,50 @@ module.exports = function() {
 		//Create emitter
 		var emitter = new EventEmitter();
 		var changes = [];
-		var timer = null;
+		var timer = false;
+		var listeners = new WeakMap();
 
 		//Trigger changes
-		var changed = function(type,target,key,value,old) {
-
+		var changed = function(change,prefix) {
+			//Duplicate
+			var c = Object.assign({},change);
+			//Add prefix
+			if (prefix)
+				//Append it
+				c.path = change.path ? prefix + "." + change.path : prefix;
 			//Add change
-			changes.push({
-				type: type,
-				target: target,
-				key: key,
-				value: value,
-				old: old
-			});
+			changes.push(c);
+			//Emit inmediate change
+			emitter.emit('change',c);
 			//If first change
 			if (!timer)
+			{
 				//Set timer at end of this execution
-				timer = setImmediate(function(){
+				asap(function(){
 					//Trigger changes
-					emitter.emit('change',changes);
+					emitter.emit('changes',changes);
 					//Clear timer
-					timer = null;
+					timer = false;
 					//Clear changes
 					changes = [];
 				});
+				//We have scheduled it already
+				timer = true;
+			}
 		};
 
-		//Listener for child objects
-		var listener = function(changes){
-			//for each change
-			for (var i=0;i<changes.length;i++)
+		//Create listener for key
+		function addListener(key) {
+			//Create listener for specific key 
+			var l =  function(change){
 				//Fire it again
-				changed(changes[i].type,changes[i].target,changes[i].key,changes[i].value,changes[i].old);
-		};
+				changed(change,key);
+			};
+			//Add to map
+			listeners[key] = l;
+			//Return listener callback
+			return l;
+		}
 		
 		
 		//Check if it is an array
@@ -57,16 +68,20 @@ module.exports = function() {
 			for (var i=0; i<object.length;++i)
 			{
 				//Get value
-				var value = object[key];
-				//Is it observable??
-				if (typeof(value)==='object' && value && !ObjectObservable.isObservable(value))
+				var value = object[i];
+				//It is a not-null object?
+				if (typeof(value)==='object' && value )
 				{
-					//Create a new proxy
-					value = new ObjectObservable(value);
-					//Set it back
-					object[key] = value;
+					//Is it already observable?
+					if( !ObjectObservable.isObservable(value))
+					{
+						//Create a new proxy
+						value = new ObjectObservable(value);
+						//Set it back
+						object[i] = value;
+					}
 					//Set us as listeners
-					value.addListener('change',listener);
+					value.addListener('change',addListener(i));
 				}
 			}
 		} else {
@@ -78,15 +93,19 @@ module.exports = function() {
 				{
 					//Get value
 					var value = object[key];
-					//Is it observable
-					if (typeof(value)==='object' && value && !ObjectObservable.isObservable(value))
+					//It is a not-null object?
+					if (typeof(value)==='object' && value )
 					{
-						//Create a new proxy
-						value = new ObjectObservable(value);
-						//Set it back
-						object[key] = value;
+						//Is it already observable?
+						if( !ObjectObservable.isObservable(value))
+						{
+							//Create a new proxy
+							value = new ObjectObservable(value);
+							//Set it back
+							object[key] = value;
+						}
 						//Set us as listeners
-						value.addListener('change',listener);
+						value.addListener('change',addListener(key));
 					}
 				}
 			}
@@ -115,43 +134,66 @@ module.exports = function() {
 						if (key in target) {
 							//Get the previous value
 							old = target[key];
+							//Get listener
+							var listener = listeners[key];
 							//Remove us from the listener just in case
-							old && old.removeListener && old.removeListener(listener);
+							old && listener && old.removeListener && old.removeListener('change',listener);
 						}
 
 						//debug("%o set %s from %o to %o",target,key,old,value);
 
-						//Is it observable?
-						if (typeof(value)==='object' && value &&!ObjectObservable.isObservable(value))
+						//It is a not-null object?
+						if (typeof(value)==='object' && value )
 						{
-							//Create a new proxy
-							value = new ObjectObservable(value);
-							//Set us alisteners
-							value.addListener('change',listener);
+							//Is it already observable?
+							if( !ObjectObservable.isObservable(value))
+								//Create a new proxy
+								value = new ObjectObservable(value);
+							//Set it before setting the listener or we will get events that we don't expect
+							target[key] = value;
+							//Set us as listeners
+							value.addListener('change',addListener(key));
+						} else {
+							//Set it
+							target[key] = value;
 						}
-						//Set it
-						target[key] = value;
+						
 						//Fire change
-						changed("set",target,key,value,old);
+						changed({
+							type: 'set',
+							target: target,
+							key: key,
+							value: value,
+							old: old
+						},key);
 						//return new value
 						return value;
 					},
 					deleteProperty: function (target, key) {
 						//debug("%o deleteProperty %s",target,key);
 						//Old value
-						var old = undefined;
+						var old = target[key];
+						
+						//Is it an object??
+						if (old && ObjectObservable.isObservable(old)) 
+						{
+							//Get listener
+							var listener = listeners[key];
+							//Remove us from the listener just in case
+							old && listener && old.removeListener && old.removeListener('change',listener);
+						}
 
 						if (Array.isArray (target))
 							old = target.splice(key,1);
 						else
 							old = delete(target[key]);
-
-						//Is it an object??
-						if (old && ObjectObservable.isObservable(old))
-							//Remove us from the listener just in case
-							old && old.removeListener && old.removeListener(listener);
+						
 						//Changed
-						changed("deleteProperty",target,key,old);
+						changed({
+							type: 'deleteProperty',
+							target: target,
+							key: key,
+						},key);
 						//OK
 						return old;
 					},

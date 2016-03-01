@@ -5,6 +5,8 @@ var test = require('tape');
 
 var ObjectObservable = require('./index.js')();
 
+global.ObjectObservable = ObjectObservable;
+
 test('Observe simple object', function (t) {
 
 	//Only one expected
@@ -51,7 +53,7 @@ test('Observe nested array', function (t) {
 });
 
 test('Observe added nested object', function (t) {
-	//Only one expected
+	//2 expected
 	t.plan(2);
 	//Create reactive object
 	var oo = new ObjectObservable({ a: null });
@@ -72,7 +74,7 @@ test('Observe added nested object', function (t) {
 
 
 test('Observe nested object delete', function (t) {
-	//Only two expected
+	//2 expected
 	t.plan(2);
 	//Create reactive object
 	var oo = new ObjectObservable({ a:  { b: 1 }});
@@ -87,13 +89,13 @@ test('Observe nested object delete', function (t) {
 	setTimeout (function() {
 		debug('Delete nested object');
 		delete oo.a;
-	},1);
+	},100);
 	
 });
 
 
 test('Observe array delete', function (t) {
-	//Only one expected
+	//2 expected
 	t.plan(2);
 	//Create reactive object
 	var oo = new ObjectObservable({ a: [{id: 1},{id:2}] });
@@ -114,7 +116,7 @@ test('Observe array delete', function (t) {
 
 
 test('Observe array add', function (t) {
-	//Only one expected
+	//2 expected
 	t.plan(2);
 	//Create reactive object
 	var oo = new ObjectObservable({ a: [{id: 1},{id:2}] });
@@ -133,3 +135,46 @@ test('Observe array add', function (t) {
 	},1);
 });
 
+
+test('JSON preservation check', function (t) {
+	//Only one expected
+	t.plan(1);
+	//Original
+	var o = { a: [{id: 1},{id:2}] };
+	//Create reactive object
+	var oo = new ObjectObservable(o);
+	//Check results
+	t.ok(JSON.stringify(o)===JSON.stringify(oo),'JSON serialization is the same');
+});
+
+
+test('Nested observed objects', function (t) {
+	//5 expected
+	t.plan(5);
+	//Create reactive object
+	var oo = new ObjectObservable({});
+	//Create reactive object
+	var oo2 = new ObjectObservable({});
+	//Set event
+	oo.on('change',function(data) {
+		debug('ObjectObservable.changed %o',data); 
+		t.ok(true,"Changed");
+	});
+	//Set event
+	oo2.on('change',function(data) {
+		debug('ObjectObservable.changed %o',data); 
+		t.ok(true,"Changed");
+	});
+	//Set it
+	oo.oo2 = oo2;
+	//Now change boths
+	oo.oo2.a = 2;
+	
+	//Change it later
+	setTimeout (function() {
+		debug('Deleting nested object and changing it again');
+		delete(oo.oo2);
+		//Now change only nested object
+		oo2.a = 3;
+	},100);
+});

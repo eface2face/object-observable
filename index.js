@@ -2,6 +2,8 @@ var setImmediate = require('core-js/library/fn/set-immediate');
 var EventEmitter = require('events');
 var debug = require('debug')('object-observable');
 
+var prefix = '__OBJECT_OBSERVABLE__PREFIX__' + new Date()+'__';
+
 module.exports = function() {
 	
 	function ObjectObservable(object)
@@ -12,7 +14,6 @@ module.exports = function() {
 		
 		//Create emitter
 		var emitter = new EventEmitter();
-		
 		var changes = [];
 		var timer = null;
 
@@ -30,7 +31,7 @@ module.exports = function() {
 			//If first change
 			if (!timer)
 				//Set timer at end of this execution
-				timer = setInmediate(function(){
+				timer = setImmediate(function(){
 					//Trigger changes
 					emitter.emit('change',changes);
 					//Clear timer
@@ -41,94 +42,147 @@ module.exports = function() {
 		};
 
 		//Listener for child objects
-		var listener = function(data){
-			//Fire it again
-			changed(data.type,data.target,data.key,data.value,data.old);
+		var listener = function(changes){
+			//for each change
+			for (var i=0;i<changes.length;i++)
+				//Fire it again
+				changed(changes[i].type,changes[i].target,changes[i].key,changes[i].value,changes[i].old);
 		};
-
+		
+		
+		//Check if it is an array
+		if (Array.isArray (object))
+		{
+			//Convert each 
+			for (var i=0; i<object.length;++i)
+			{
+				//Get value
+				var value = object[key];
+				//Is it observable??
+				if (typeof(value)==='object' && value && !ObjectObservable.isObservable(value))
+				{
+					//Create a new proxy
+					value = new ObjectObservable(value);
+					//Set it back
+					object[key] = value;
+					//Set us as listeners
+					value.addListener('change',listener);
+				}
+			}
+		} else {
+			//Append each property
+			for (var key in object)
+			{
+				//If it is a property
+				if (object.hasOwnProperty (key))
+				{
+					//Get value
+					var value = object[key];
+					//Is it observable
+					if (typeof(value)==='object' && value && !ObjectObservable.isObservable(value))
+					{
+						//Create a new proxy
+						value = new ObjectObservable(value);
+						//Set it back
+						object[key] = value;
+						//Set us as listeners
+						value.addListener('change',listener);
+					}
+				}
+			}
+		}
+		
 		//Create proxy for object
 		return new Proxy(
-			//Copy object properties onto emitter
-			Object.assign(emitter,object),
-			//Proxy handler object
-			{
-				get: function (target, key) {
-					debug("%o get %s",target,key);
-					return target[key] || undefined;
-				},
-				set: function (target, key, value) {
-					//Old value
-					var old = undefined;
-					var res = value;
+				object,
+				//Proxy handler object
+				{
+					get: function (target, key) {
+						//Check if it is requesting listeners
+						if (key==='addListener' || key==='on')
+							return emitter.addListener.bind(emitter);
+						else if (key==='removeListener')
+							return emitter.removeListener.bind(emitter);
+						
+						//debug("%o get %s",target,key);
+						return target[key] || undefined;
+					},
+					set: function (target, key, value) {
+						//Old value
+						var old = undefined;
 
-					//Check if we are replacing a key
-					if (key in target) {
-						//Get the previous value
-						old = target[key];
-						//Remove us from the listener just in case
-						old && old.removeListener && old.removeListener(listener);
-					}
+						//Check if we are replacing a key
+						if (key in target) {
+							//Get the previous value
+							old = target[key];
+							//Remove us from the listener just in case
+							old && old.removeListener && old.removeListener(listener);
+						}
 
-					debug("%o set %s from %o to %o",target,key,old,value);
+						//debug("%o set %s from %o to %o",target,key,old,value);
 
-					//Is it an object??
-					if (typeof(value)==="object")
-					{
-						//Is it an emitter already??
-						if (!res.listeners)
+						//Is it observable?
+						if (typeof(value)==='object' && value &&!ObjectObservable.isObservable(value))
+						{
 							//Create a new proxy
-							res = new ObjectObservable(value);
-						//Set us alisteners
-						res.addListener('change',listener);
+							value = new ObjectObservable(value);
+							//Set us alisteners
+							value.addListener('change',listener);
+						}
+						//Set it
+						target[key] = value;
+						//Fire change
+						changed("set",target,key,value,old);
+						//return new value
+						return value;
+					},
+					deleteProperty: function (target, key) {
+						//debug("%o deleteProperty %s",target,key);
+						//Old value
+						var old = undefined;
+
+						if (Array.isArray (target))
+							old = target.splice(key,1);
+						else
+							old = delete(target[key]);
+
+						//Is it an object??
+						if (old && ObjectObservable.isObservable(old))
+							//Remove us from the listener just in case
+							old && old.removeListener && old.removeListener(listener);
+						//Changed
+						changed("deleteProperty",target,key,old);
+						//OK
+						return old;
+					},
+					enumerate: function (target) {
+						//debug("%o enumerate",target);
+						return Object.keys(target);
+					},
+					ownKeys: function (target) {
+						//debug("%o ownKeys",target);
+						return Object.keys(target);
+					},
+					has: function (target, key) {
+						//debug("%o has %s",target,key);
+						return prefix===key || key in target;
+					},
+					defineProperty: function (target, key, desc) {
+						//debug("%o defineProperty %s with desc %o",target,key,desc);
+						return Object.defineProperty (target,key, desc);
+					},
+					getOwnPropertyDescriptor: function (target, key) {
+						//debug("%o getOwnPropertyDescriptor %s",target,key);
+						return Object.getOwnPropertyDescriptor (target,key);
 					}
-					//Set it
-					target[key] = res;
-					//Fire change
-					changed("set",target,key,res,old);
-					//return new value
-					return res;
-				},
-				deleteProperty: function (target, key) {
-					debug("%o deleteProperty %s to %o",target,key);
-					//Old value
-					var old = undefined;
-
-					if (Array.isArray (target))
-						old = target.splice(key,1);
-					else
-						old = target.delete(key);
-
-					//Is it an object??
-					if (old && typeof(old)==="object")
-						//Remove us from the listener just in case
-						old && old.removeListener && old.removeListener(listener);
-					//Changed
-					changed("deleteProperty",target,key,old);
-					//OK
-					return old;
-				},
-				enumerate: function (target) {
-					debug("%o enumerate",target);
-					return target.keys ();
-				},
-				ownKeys: function (target) {
-					debug("%o ownKeys",target);
-					return target.keys ();
-				},
-				has: function (target, key) {
-					debug("%o has %s",target,key);
-					return key in target || target.hasItem (key);
-				},
-				defineProperty: function (target, key, desc) {
-					debug("%o defineProperty %s with desc %o",target,key,desc);
-					return Object.defineProperty (target,key, desc);
-				},
-				getOwnPropertyDescriptor: function (target, key) {
-					debug("%o getOwnPropertyDescriptor %s",target,key);
-					return target.getOwnPropertyDescriptor (key);
 				}
-			});
+			);
 	}
+	
+	ObjectObservable.isObservable = function(object)
+	{
+		return typeof(object)==='object' && object &&  prefix in object;
+	};
 
 	return ObjectObservable;
 };

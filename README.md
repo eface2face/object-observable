@@ -51,6 +51,9 @@ And then:
 var ObjectObservable = require('object-observable');
 ```
 
+## Demo
+Try it on [jsfiddle](https://jsfiddle.net/L109thvm/1)
+
 ## API
 ### ObjectObservable.create(object,params)
 Creates an observable object from input object
@@ -100,7 +103,7 @@ Example:
 ```javascript
  var listener = ObjectObservable.observe(observable,function(changes){
     for (var i = 0; i < changes.length; ++i)
-      console.log("Change on object: ",change[i]);
+      console.log("Change on object: ",changes[i]);
  });
 ```
 

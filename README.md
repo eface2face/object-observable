@@ -165,8 +165,8 @@ Each change delivered to the event listeners has the following attributes:
 * `type` (String) ['set','deleteProperty'] Type of Proxy handler invoking the change
 * `path` (String) Path of the changed attribute relative to root object
 * `key`  (String) Key of the attribute of the changed object
-* `value` (ANY) [only if `type==='set`] New value set for the key
-* `old` (ANY) [only if `type==='set`] Old value set for the key
+* `value` (ANY) [only if `type==='set'`] New value set for the key
+* `old` (ANY) [only if `type==='set'`] Old value set for the key
 
 Take into account that a single change may trigger several events, specially if modifying an array via `splice`.
 

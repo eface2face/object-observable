@@ -4,12 +4,10 @@ var EventEmitter = require('events');
 
 var prefix = '__OBJECT_OBSERVABLE__PREFIX__' + new Date()+'__';
 
-function ObjectObservable(object)
-{
-	// called without `new`
-	if (!(this instanceof ObjectObservable))
-		return new ObjectObservable(object);
+var ObjectObservable = {};
 
+ObjectObservable.create = function (object)
+{
 	//Create emitter
 	var emitter = new EventEmitter();
 	var changes = [];
@@ -74,7 +72,7 @@ function ObjectObservable(object)
 				if( !ObjectObservable.isObservable(value))
 				{
 					//Create a new proxy
-					value = new ObjectObservable(value);
+					value = ObjectObservable.create(value);
 					//Set it back
 					object[i] = value;
 				}
@@ -98,7 +96,7 @@ function ObjectObservable(object)
 					if( !ObjectObservable.isObservable(value))
 					{
 						//Create a new proxy
-						value = new ObjectObservable(value);
+						value = ObjectObservable.create(value);
 						//Set it back
 						object[key] = value;
 					}
@@ -122,7 +120,7 @@ function ObjectObservable(object)
 						return emitter.removeListener.bind(emitter);
 
 					//debug("%o get %s",target,key);
-					return target[key] || undefined;
+					return target[key];
 				},
 				set: function (target, key, value) {
 					//Old value
@@ -146,7 +144,7 @@ function ObjectObservable(object)
 						//Is it already observable?
 						if( !ObjectObservable.isObservable(value))
 							//Create a new proxy
-							value = new ObjectObservable(value);
+							value = ObjectObservable.create(value);
 						//Set it before setting the listener or we will get events that we don't expect
 						target[key] = value;
 						//Set us as listeners
@@ -195,29 +193,13 @@ function ObjectObservable(object)
 					//OK
 					return old;
 				},
-				enumerate: function (target) {
-					//debug("%o enumerate",target);
-					return Object.keys(target);
-				},
-				ownKeys: function (target) {
-					//debug("%o ownKeys",target);
-					return Object.keys(target);
-				},
 				has: function (target, key) {
 					//debug("%o has %s",target,key);
 					return prefix===key || key in target;
-				},
-				defineProperty: function (target, key, desc) {
-					//debug("%o defineProperty %s with desc %o",target,key,desc);
-					return Object.defineProperty (target,key, desc);
-				},
-				getOwnPropertyDescriptor: function (target, key) {
-					//debug("%o getOwnPropertyDescriptor %s",target,key);
-					return Object.getOwnPropertyDescriptor (target,key);
 				}
 			}
 		);
-}
+};
 
 ObjectObservable.isObservable = function(object)
 {

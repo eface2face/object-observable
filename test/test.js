@@ -4,13 +4,14 @@ var debug = require('debug')('test');
 var test = require('tape');
 
 var ObjectObservable = require('../');
+global.ObjectObservable = ObjectObservable;
 
 test('Observe simple object', function (t) {
 
 	t.plan(5);
 
 	//Create reactive object
-	var oo = new ObjectObservable({ a: 1 });
+	var oo = ObjectObservable.create({ a: 1 });
 
 	//Set event
 	oo.on('changes',function(data) {
@@ -29,7 +30,7 @@ test('Observe simple object', function (t) {
 test('Observe nested object', function (t) {
 	t.plan(5);
 	//Create reactive object
-	var oo = new ObjectObservable({ a: { b: 1 } });
+	var oo = ObjectObservable.create({ a: { b: 1 } });
 	//Set event
 	oo.on('changes',function(data) {
 		debug('ObjectObservable.changed %o',data);
@@ -47,7 +48,7 @@ test('Observe nested object', function (t) {
 test('Observe nested array', function (t) {
 	t.plan(8);
 	//Create reactive object
-	var oo = new ObjectObservable({ a: [ 1 ] });
+	var oo = ObjectObservable.create({ a: [ 1 ] });
 	//Set event
 	oo.on('changes',function(data) {
 		debug('ObjectObservable.changed %o',data);
@@ -71,7 +72,7 @@ test('Observe added nested object', function (t) {
 
 	t.plan(10);
 	//Create reactive object
-	var oo = new ObjectObservable({ a: null });
+	var oo = ObjectObservable.create({ a: null });
 	//Set event
 	oo.on('changes',function(data) {
 		debug('ObjectObservable.changed %o',data);
@@ -110,7 +111,7 @@ test('Observe nested object delete', function (t) {
 	//expected
 	t.plan(10);
 	//Create reactive object
-	var oo = new ObjectObservable({ a:  { b: 1 }});
+	var oo = ObjectObservable.create({ a:  { b: 1 }});
 	//Set event
 	oo.on('changes',function(data) {
 		debug('ObjectObservable.changed %o',data);
@@ -148,7 +149,7 @@ test('Observe array delete', function (t) {
 	//expected
 	t.plan(11);
 	//Create reactive object
-	var oo = new ObjectObservable({ a: [{id: 1},{id:2}] });
+	var oo = ObjectObservable.create({ a: [{id: 1},{id:2}] });
 	//Set event
 	oo.on('changes',function(data) {
 		debug('ObjectObservable.changed %o',data);
@@ -190,7 +191,7 @@ test('Observe array add', function (t) {
 	//expected
 	t.plan(13);
 	//Create reactive object
-	var oo = new ObjectObservable({ a: [{id: 1},{id:2}] });
+	var oo = ObjectObservable.create({ a: [{id: 1},{id:2}] });
 	//Set event
 	oo.on('changes',function(data) {
 		debug('ObjectObservable.changed %o',data);
@@ -234,7 +235,7 @@ test('JSON preservation check', function (t) {
 	//Original
 	var o = { a: [{id: 1},{id:2}] };
 	//Create reactive object
-	var oo = new ObjectObservable(o);
+	var oo = ObjectObservable.create(o);
 	//Check results
 	t.ok(JSON.stringify(o)===JSON.stringify(oo),'JSON serialization is the same');
 });
@@ -246,9 +247,9 @@ test('Nested observed objects', function (t) {
 	//Expected
 	t.plan(22);
 	//Create reactive object
-	var oo = new ObjectObservable({});
+	var oo = ObjectObservable.create({});
 	//Create reactive object
-	var oo2 = new ObjectObservable({});
+	var oo2 = ObjectObservable.create({});
 	//Set event
 	oo.on('changes',function(data) {
 		debug('ObjectObservable.changed %o',data);
@@ -316,9 +317,9 @@ test('Nested observed objects (II)', function (t) {
 	//Expected
 	t.plan(26);
 	//Create reactive object
-	var oo2 = new ObjectObservable({});
+	var oo2 = ObjectObservable.create({});
 	//Create reactive object
-	var oo = new ObjectObservable({oo2:oo2});
+	var oo = ObjectObservable.create({oo2:oo2});
 	//Set event
 	oo.on('changes',function(data) {
 		debug('ObjectObservable.changed %o',data);

@@ -116,6 +116,7 @@ Example:
     for (var i = 0; i < changes.length; ++i)
       console.log("Change on object: ",change[i]);
  });
+```
 
 ### ObjectObservable.observeInmediate
 Observe individual changes on an observable object and calls listener inmediatelly with a single change.

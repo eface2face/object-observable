@@ -48,7 +48,7 @@ $ npm install object-observable --save
 And then:
 
 ```javascript
-var ObjectObservable = require('install object-observable');
+var ObjectObservable = require('object-observable');
 ```
 
 ## API

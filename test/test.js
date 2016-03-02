@@ -10,11 +10,35 @@ test('Observe simple object', function (t) {
 
 	t.plan(5);
 
+	var o = { a: 1 };
+	
 	//Create reactive object
 	var oo = ObjectObservable.create({ a: 1 });
 
 	//Set event
-	oo.on('changes',function(data) {
+	ObjectObservable.observe(oo,function(data) {
+		debug('ObjectObservable.changed %o',data);
+		t.ok(true,"Changed");
+		//Changes from oo.a = 2;
+		t.equal(data.length,1);
+		t.equal(data[0].path,'a');
+		t.equal(data[0].key,'a');
+		t.equal(data[0].value,2);
+	});
+	
+	//Change property
+	oo.a = 2;
+});
+
+test('UnObserve simple object', function (t) {
+
+	t.plan(6);
+
+	//Create reactive object
+	var oo = ObjectObservable.create({ a: 1 });
+
+	//Set event
+	var listener = ObjectObservable.observe(oo,function(data) {
 		debug('ObjectObservable.changed %o',data);
 		t.ok(true,"Changed");
 		//Changes from oo.a = 2;
@@ -25,14 +49,24 @@ test('Observe simple object', function (t) {
 	});
 	//Change property
 	oo.a = 2;
+	
+	setTimeout (function() {
+		//Remove listener
+		ObjectObservable.unobserve(oo,listener);
+		debug('Changed unobserved object');
+		oo.a = 3;
+		t.ok(true,"Should not get any more events now");
+	},1);
 });
 
 test('Observe nested object', function (t) {
-	t.plan(5);
+	t.plan(6);
+	//Plain object
+	var o = { a: { b: 1 }};
 	//Create reactive object
-	var oo = ObjectObservable.create({ a: { b: 1 } });
+	var oo = ObjectObservable.create(o);
 	//Set event
-	oo.on('changes',function(data) {
+	ObjectObservable.observe(oo,function(data) {
 		debug('ObjectObservable.changed %o',data);
 		t.ok(true,"Changed");
 		//Changes from oo.a.b = 2;
@@ -41,7 +75,62 @@ test('Observe nested object', function (t) {
 		t.equal(data[0].key,'b');
 		t.equal(data[0].value,2);
 	});
+	//Check it has made nested object observable
+	t.ok(ObjectObservable.isObservable(o.a),"Nested object of plain object is observable also");
 	//Change property
+	oo.a.b = 2;
+});
+
+
+test('Observe clone nested object', function (t) {
+
+	t.plan(6);
+	//Plain object
+	var o = { a: { b: 1 }};
+	//Create reactive object
+	var oo = ObjectObservable.create(o,{
+		clone: true
+	});
+	//Set event
+	ObjectObservable.observe(oo,function(data) {
+		debug('ObjectObservable.changed %o',data);
+		t.ok(true,"Changed");
+		//Changes from oo.a.b = 2;
+		t.equal(data.length,1);
+		t.equal(data[0].path,'a.b');
+		t.equal(data[0].key,'b');
+		t.equal(data[0].value,2);
+	});
+	//Check it has not changed nested object of plain obejct
+	t.ok(!ObjectObservable.isObservable(o.a),"Nested object of plain object is preserved");
+	//Change property
+	oo.a.b = 2;
+});
+
+test('Observe not recursivelly nested object', function (t) {
+
+	t.plan(6);
+	//Plain object
+	var o = { a: { b: 1 }};
+	//Create reactive object
+	var oo = ObjectObservable.create(o,{
+		recursive: false
+	});
+	//Set event
+	ObjectObservable.observe(oo,function(data) {
+		debug('ObjectObservable.changed %o',data);
+		t.ok(true,"Changed");
+		//Changes from oo.a.b = 2;
+		t.equal(data.length,1);
+		t.equal(data[0].path,'c');
+		t.equal(data[0].key,'c');
+		t.equal(data[0].value,3);
+	});
+	//Check it has made nested object observable
+	t.ok(!ObjectObservable.isObservable(oo.a),"Nested object of plain object is no observable");
+	//Change property on root object
+	oo.c = 3;
+	//Change property on nested object, this should not fire
 	oo.a.b = 2;
 });
 
@@ -50,7 +139,7 @@ test('Observe nested array', function (t) {
 	//Create reactive object
 	var oo = ObjectObservable.create({ a: [ 1 ] });
 	//Set event
-	oo.on('changes',function(data) {
+	ObjectObservable.observe(oo,function(data) {
 		debug('ObjectObservable.changed %o',data);
 		t.ok(true,"Changed");
 		//Add element
@@ -74,7 +163,7 @@ test('Observe added nested object', function (t) {
 	//Create reactive object
 	var oo = ObjectObservable.create({ a: null });
 	//Set event
-	oo.on('changes',function(data) {
+	ObjectObservable.observe(oo,function(data) {
 		debug('ObjectObservable.changed %o',data);
 		t.ok(true,"Changed");
 		if (i==0)
@@ -113,7 +202,7 @@ test('Observe nested object delete', function (t) {
 	//Create reactive object
 	var oo = ObjectObservable.create({ a:  { b: 1 }});
 	//Set event
-	oo.on('changes',function(data) {
+	ObjectObservable.observe(oo,function(data) {
 		debug('ObjectObservable.changed %o',data);
 		t.ok(true,"Changed");
 		if (i==0)
@@ -151,7 +240,7 @@ test('Observe array delete', function (t) {
 	//Create reactive object
 	var oo = ObjectObservable.create({ a: [{id: 1},{id:2}] });
 	//Set event
-	oo.on('changes',function(data) {
+	ObjectObservable.observe(oo,function(data) {
 		debug('ObjectObservable.changed %o',data);
 		t.ok(true,"Changed");
 		if (i==0)
@@ -193,7 +282,7 @@ test('Observe array add', function (t) {
 	//Create reactive object
 	var oo = ObjectObservable.create({ a: [{id: 1},{id:2}] });
 	//Set event
-	oo.on('changes',function(data) {
+	ObjectObservable.observe(oo,function(data) {
 		debug('ObjectObservable.changed %o',data);
 		t.ok(true,"Changed");
 		if (i==0)
@@ -251,7 +340,7 @@ test('Nested observed objects', function (t) {
 	//Create reactive object
 	var oo2 = ObjectObservable.create({});
 	//Set event
-	oo.on('changes',function(data) {
+	ObjectObservable.observe(oo,function(data) {
 		debug('ObjectObservable.changed %o',data);
 		t.ok(true,"Changed");
 		if (i==0)
@@ -276,7 +365,7 @@ test('Nested observed objects', function (t) {
 		i++;
 	});
 	//Set event
-	oo2.on('changes',function(data) {
+	ObjectObservable.observe(oo2,function(data) {
 		debug('ObjectObservable.changed %o',data);
 		t.ok(true,"Changed");
 		if (j==0)
@@ -321,7 +410,7 @@ test('Nested observed objects (II)', function (t) {
 	//Create reactive object
 	var oo = ObjectObservable.create({oo2:oo2});
 	//Set event
-	oo.on('changes',function(data) {
+	ObjectObservable.observe(oo,function(data) {
 		debug('ObjectObservable.changed %o',data);
 		t.ok(true,"Changed");
 		if (i==0)
@@ -347,7 +436,7 @@ test('Nested observed objects (II)', function (t) {
 		i++;
 	});
 	//Set event
-	oo2.on('changes',function(data) {
+	ObjectObservable.observe(oo2,function(data) {
 		debug('ObjectObservable.changed %o',data);
 		t.ok(true,"Changed");
 		if (j==0)

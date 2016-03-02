@@ -4486,8 +4486,22 @@ var prefix = '__OBJECT_OBSERVABLE__PREFIX__' + new Date()+'__';
 
 var ObjectObservable = {};
 
-ObjectObservable.create = function (object)
+ObjectObservable.create = function (object,params)
 {
+	//IF no args
+	if (!arguments.length)
+		//Create empty object;
+		object = {};
+
+	//Set defaults
+	var params = Object.assign(
+		{},
+		{
+			clone: false,
+			recursive: true
+		},
+		params
+	);
 	//Create emitter
 	var emitter = new EventEmitter();
 	var changes = [];
@@ -4537,38 +4551,23 @@ ObjectObservable.create = function (object)
 	}
 
 
-	//Check if it is an array
-	if (Array.isArray (object))
+	//Do not clone by default
+	var cloned = object;
+	//If we need to do it recursively
+	if (params.recursive)
 	{
-		//Convert each
-		for (var i=0; i<object.length;++i)
+		//Check if it is an array
+		if (Array.isArray (object))
 		{
-			//Get value
-			var value = object[i];
-			//It is a not-null object?
-			if (typeof(value)==='object' && value )
-			{
-				//Is it already observable?
-				if( !ObjectObservable.isObservable(value))
-				{
-					//Create a new proxy
-					value = ObjectObservable.create(value);
-					//Set it back
-					object[i] = value;
-				}
-				//Set us as listeners
-				value.addListener('change',addListener(i));
-			}
-		}
-	} else {
-		//Append each property
-		for (var key in object)
-		{
-			//If it is a property
-			if (object.hasOwnProperty (key))
+			//Check if we need to clone object
+			if (params.clone)
+				//Create empty one
+				cloned = [];
+			//Convert each
+			for (var i=0; i<object.length;++i)
 			{
 				//Get value
-				var value = object[key];
+				var value = object[i];
 				//It is a not-null object?
 				if (typeof(value)==='object' && value )
 				{
@@ -4578,10 +4577,39 @@ ObjectObservable.create = function (object)
 						//Create a new proxy
 						value = ObjectObservable.create(value);
 						//Set it back
-						object[key] = value;
+						cloned[i] = value;
 					}
 					//Set us as listeners
-					value.addListener('change',addListener(key));
+					ObjectObservable.observeInmediate(value,addListener(i));
+				}
+			}
+		} else {
+			//Check if we need to clone object
+			if (params.clone)
+				//Create empty one
+				cloned = {};
+			//Append each property
+			for (var key in object)
+			{
+				//If it is a property
+				if (object.hasOwnProperty (key))
+				{
+					//Get value
+					var value = object[key];
+					//It is a not-null object?
+					if (typeof(value)==='object' && value )
+					{
+						//Is it already observable?
+						if( !ObjectObservable.isObservable(value))
+						{
+							//Create a new proxy
+							value = ObjectObservable.create(value);
+							//Set it back
+							cloned[key] = value;
+						}
+						//Set us as listeners
+						ObjectObservable.observeInmediate(value,addListener(key));
+					}
 				}
 			}
 		}
@@ -4589,37 +4617,29 @@ ObjectObservable.create = function (object)
 
 	//Create proxy for object
 	return new Proxy(
-			object,
+			cloned,
 			//Proxy handler object
 			{
 				get: function (target, key) {
 					//Check if it is requesting listeners
-					if (key==='addListener' || key==='on')
-						return emitter.addListener.bind(emitter);
-					else if (key==='removeListener')
-						return emitter.removeListener.bind(emitter);
+					if (key===prefix)
+						return emitter;
 
 					//debug("%o get %s",target,key);
 					return target[key];
 				},
 				set: function (target, key, value) {
-					//Old value
-					var old = undefined;
-
-					//Check if we are replacing a key
-					if (key in target) {
-						//Get the previous value
-						old = target[key];
-						//Get listener
-						var listener = listeners[key];
-						//Remove us from the listener just in case
-						old && listener && old.removeListener && old.removeListener('change',listener);
-					}
+					//Get the previous value
+					var old = target[key];
+					//Get listener
+					var listener = listeners[key];
+					//Remove us from the listener just in case
+					old && listener && ObjectObservable.unobserveInmediate (old,listener);
 
 					//debug("%o set %s from %o to %o",target,key,old,value);
 
 					//It is a not-null object?
-					if (typeof(value)==='object' && value )
+					if (params.recursive && typeof(value)==='object' && value )
 					{
 						//Is it already observable?
 						if( !ObjectObservable.isObservable(value))
@@ -4628,7 +4648,7 @@ ObjectObservable.create = function (object)
 						//Set it before setting the listener or we will get events that we don't expect
 						target[key] = value;
 						//Set us as listeners
-						value.addListener('change',addListener(key));
+						ObjectObservable.observeInmediate(value,addListener(key));
 					} else {
 						//Set it
 						target[key] = value;
@@ -4650,14 +4670,10 @@ ObjectObservable.create = function (object)
 					//Old value
 					var old = target[key];
 
-					//Is it an object??
-					if (old && ObjectObservable.isObservable(old))
-					{
-						//Get listener
-						var listener = listeners[key];
-						//Remove us from the listener just in case
-						old && listener && old.removeListener && old.removeListener('change',listener);
-					}
+					//Get listener
+					var listener = listeners[key];
+					//Remove us from the listener just in case
+					old && listener && ObjectObservable.unobserveInmediate (old,listener);
 
 					if (Array.isArray (target))
 						old = target.splice(key,1);
@@ -4684,6 +4700,72 @@ ObjectObservable.create = function (object)
 ObjectObservable.isObservable = function(object)
 {
 	return typeof(object)==='object' && object &&  prefix in object;
+};
+
+ObjectObservable.observe = function(object,listener)
+{
+	//Get emmiter
+	var emitter = object[prefix];
+	//Check if it is observable
+	if (!emitter)
+		throw new Error('Object is not observable');
+	
+	//Listen
+	emitter.addListener('changes',listener);
+	
+	//reurn listener
+	return listener;
+};
+
+ObjectObservable.once = function(object,listener)
+{
+	//Get emmiter
+	var emitter = object[prefix];
+	//Check if it is observable
+	if (!emitter)
+		throw new Error('Object is not observable');
+	
+	//Listen
+	emitter.once('changes',listener);
+	
+	//return listener
+	return listener;
+};
+
+ObjectObservable.unobserve = function(object,listener)
+{
+	//Get emmiter
+	var emitter = object[prefix];
+	//Check if it is observable
+	if (!emitter)
+		throw new Error('Object is not observable');
+	
+	//UnListen
+	emitter.removeListener('changes',listener);
+};
+
+ObjectObservable.observeInmediate = function(object,listener)
+{
+	//Get emmiter
+	var emitter = object[prefix];
+	//Check if it is observable
+	if (!emitter)
+		throw new Error('Object is not observable');
+	
+	//UnListen
+	emitter.addListener('change',listener);
+};
+
+ObjectObservable.unobserveInmediate = function(object,listener)
+{
+	//Get emmiter
+	var emitter = object[prefix];
+	//Check if it is observable
+	if (!emitter)
+		throw new Error('Object is not observable');
+	
+	//Listen
+	return emitter.removeListener('change',listener);
 };
 
 module.exports = ObjectObservable;
@@ -7314,11 +7396,35 @@ test('Observe simple object', function (t) {
 
 	t.plan(5);
 
+	var o = { a: 1 };
+	
 	//Create reactive object
 	var oo = ObjectObservable.create({ a: 1 });
 
 	//Set event
-	oo.on('changes',function(data) {
+	ObjectObservable.observe(oo,function(data) {
+		debug('ObjectObservable.changed %o',data);
+		t.ok(true,"Changed");
+		//Changes from oo.a = 2;
+		t.equal(data.length,1);
+		t.equal(data[0].path,'a');
+		t.equal(data[0].key,'a');
+		t.equal(data[0].value,2);
+	});
+	
+	//Change property
+	oo.a = 2;
+});
+
+test('UnObserve simple object', function (t) {
+
+	t.plan(6);
+
+	//Create reactive object
+	var oo = ObjectObservable.create({ a: 1 });
+
+	//Set event
+	var listener = ObjectObservable.observe(oo,function(data) {
 		debug('ObjectObservable.changed %o',data);
 		t.ok(true,"Changed");
 		//Changes from oo.a = 2;
@@ -7329,14 +7435,24 @@ test('Observe simple object', function (t) {
 	});
 	//Change property
 	oo.a = 2;
+	
+	setTimeout (function() {
+		//Remove listener
+		ObjectObservable.unobserve(oo,listener);
+		debug('Changed unobserved object');
+		oo.a = 3;
+		t.ok(true,"Should not get any more events now");
+	},1);
 });
 
 test('Observe nested object', function (t) {
-	t.plan(5);
+	t.plan(6);
+	//Plain object
+	var o = { a: { b: 1 }};
 	//Create reactive object
-	var oo = ObjectObservable.create({ a: { b: 1 } });
+	var oo = ObjectObservable.create(o);
 	//Set event
-	oo.on('changes',function(data) {
+	ObjectObservable.observe(oo,function(data) {
 		debug('ObjectObservable.changed %o',data);
 		t.ok(true,"Changed");
 		//Changes from oo.a.b = 2;
@@ -7345,7 +7461,62 @@ test('Observe nested object', function (t) {
 		t.equal(data[0].key,'b');
 		t.equal(data[0].value,2);
 	});
+	//Check it has made nested object observable
+	t.ok(ObjectObservable.isObservable(o.a),"Nested object of plain object is observable also");
 	//Change property
+	oo.a.b = 2;
+});
+
+
+test('Observe clone nested object', function (t) {
+
+	t.plan(6);
+	//Plain object
+	var o = { a: { b: 1 }};
+	//Create reactive object
+	var oo = ObjectObservable.create(o,{
+		clone: true
+	});
+	//Set event
+	ObjectObservable.observe(oo,function(data) {
+		debug('ObjectObservable.changed %o',data);
+		t.ok(true,"Changed");
+		//Changes from oo.a.b = 2;
+		t.equal(data.length,1);
+		t.equal(data[0].path,'a.b');
+		t.equal(data[0].key,'b');
+		t.equal(data[0].value,2);
+	});
+	//Check it has not changed nested object of plain obejct
+	t.ok(!ObjectObservable.isObservable(o.a),"Nested object of plain object is preserved");
+	//Change property
+	oo.a.b = 2;
+});
+
+test('Observe not recursivelly nested object', function (t) {
+
+	t.plan(6);
+	//Plain object
+	var o = { a: { b: 1 }};
+	//Create reactive object
+	var oo = ObjectObservable.create(o,{
+		recursive: false
+	});
+	//Set event
+	ObjectObservable.observe(oo,function(data) {
+		debug('ObjectObservable.changed %o',data);
+		t.ok(true,"Changed");
+		//Changes from oo.a.b = 2;
+		t.equal(data.length,1);
+		t.equal(data[0].path,'c');
+		t.equal(data[0].key,'c');
+		t.equal(data[0].value,3);
+	});
+	//Check it has made nested object observable
+	t.ok(!ObjectObservable.isObservable(oo.a),"Nested object of plain object is no observable");
+	//Change property on root object
+	oo.c = 3;
+	//Change property on nested object, this should not fire
 	oo.a.b = 2;
 });
 
@@ -7354,7 +7525,7 @@ test('Observe nested array', function (t) {
 	//Create reactive object
 	var oo = ObjectObservable.create({ a: [ 1 ] });
 	//Set event
-	oo.on('changes',function(data) {
+	ObjectObservable.observe(oo,function(data) {
 		debug('ObjectObservable.changed %o',data);
 		t.ok(true,"Changed");
 		//Add element
@@ -7378,7 +7549,7 @@ test('Observe added nested object', function (t) {
 	//Create reactive object
 	var oo = ObjectObservable.create({ a: null });
 	//Set event
-	oo.on('changes',function(data) {
+	ObjectObservable.observe(oo,function(data) {
 		debug('ObjectObservable.changed %o',data);
 		t.ok(true,"Changed");
 		if (i==0)
@@ -7417,7 +7588,7 @@ test('Observe nested object delete', function (t) {
 	//Create reactive object
 	var oo = ObjectObservable.create({ a:  { b: 1 }});
 	//Set event
-	oo.on('changes',function(data) {
+	ObjectObservable.observe(oo,function(data) {
 		debug('ObjectObservable.changed %o',data);
 		t.ok(true,"Changed");
 		if (i==0)
@@ -7455,7 +7626,7 @@ test('Observe array delete', function (t) {
 	//Create reactive object
 	var oo = ObjectObservable.create({ a: [{id: 1},{id:2}] });
 	//Set event
-	oo.on('changes',function(data) {
+	ObjectObservable.observe(oo,function(data) {
 		debug('ObjectObservable.changed %o',data);
 		t.ok(true,"Changed");
 		if (i==0)
@@ -7497,7 +7668,7 @@ test('Observe array add', function (t) {
 	//Create reactive object
 	var oo = ObjectObservable.create({ a: [{id: 1},{id:2}] });
 	//Set event
-	oo.on('changes',function(data) {
+	ObjectObservable.observe(oo,function(data) {
 		debug('ObjectObservable.changed %o',data);
 		t.ok(true,"Changed");
 		if (i==0)
@@ -7555,7 +7726,7 @@ test('Nested observed objects', function (t) {
 	//Create reactive object
 	var oo2 = ObjectObservable.create({});
 	//Set event
-	oo.on('changes',function(data) {
+	ObjectObservable.observe(oo,function(data) {
 		debug('ObjectObservable.changed %o',data);
 		t.ok(true,"Changed");
 		if (i==0)
@@ -7580,7 +7751,7 @@ test('Nested observed objects', function (t) {
 		i++;
 	});
 	//Set event
-	oo2.on('changes',function(data) {
+	ObjectObservable.observe(oo2,function(data) {
 		debug('ObjectObservable.changed %o',data);
 		t.ok(true,"Changed");
 		if (j==0)
@@ -7625,7 +7796,7 @@ test('Nested observed objects (II)', function (t) {
 	//Create reactive object
 	var oo = ObjectObservable.create({oo2:oo2});
 	//Set event
-	oo.on('changes',function(data) {
+	ObjectObservable.observe(oo,function(data) {
 		debug('ObjectObservable.changed %o',data);
 		t.ok(true,"Changed");
 		if (i==0)
@@ -7651,7 +7822,7 @@ test('Nested observed objects (II)', function (t) {
 		i++;
 	});
 	//Set event
-	oo2.on('changes',function(data) {
+	ObjectObservable.observe(oo2,function(data) {
 		debug('ObjectObservable.changed %o',data);
 		t.ok(true,"Changed");
 		if (j==0)

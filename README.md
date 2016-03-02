@@ -3,7 +3,7 @@ Observable object via ES6 Proxies
 
 So, Object.observe (O.o from now on) is being removed from Chrome, claiming that it is usage was very low. Well, obviously, if a functionality is only implemented by one browser, it will be not be used much. Except for a few of us that create applications targeting only Chrome browser.
 
-In that regard, O.o was a awesome functionality in terms of spliting model/views independence. But it is gone, so what to do if you were heavily using O.o intensively on your application? Panic? Yes, maybe. But fortunatelly Google gave us a nice replacement of O.o in the very same Chrome version than they deprecated it, [ES proxies](https://developer.mozilla.org/en/docs/Web/JavaScript/Reference/Global_Objects/Proxy).
+In that regard, O.o was a awesome functionality in terms of spliting model/views independence. But it is gone, so what to do if you were heavily using O.o intensively on your application? Panic? Yes, maybe. But fortunatelly Google gave us a nice replacement of O.o in the very same Chrome version than they deprecated it, [ES6 proxies](https://developer.mozilla.org/en/docs/Web/JavaScript/Reference/Global_Objects/Proxy).
 
 The main difference betwen O.o and Proxies is that while with O.o you could observe any object, with Proxies, you have to work with the object returned when you create the proxy. Why is that important? Because you could observe objects created by third party libraries, without having to make any change. 
 

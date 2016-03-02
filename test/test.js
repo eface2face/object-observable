@@ -1,11 +1,9 @@
 //Enable debug
-process.env.DEBUG = "*";
+// process.env.DEBUG = "*";
 var debug = require('debug')('test');
 var test = require('tape');
 
-var ObjectObservable = require('./index.js')();
-
-global.ObjectObservable = ObjectObservable;
+var ObjectObservable = require('../');
 
 test('Observe simple object', function (t) {
 
@@ -13,10 +11,10 @@ test('Observe simple object', function (t) {
 
 	//Create reactive object
 	var oo = new ObjectObservable({ a: 1 });
-	
+
 	//Set event
 	oo.on('changes',function(data) {
-		debug('ObjectObservable.changed %o',data); 
+		debug('ObjectObservable.changed %o',data);
 		t.ok(true,"Changed");
 		//Changes from oo.a = 2;
 		t.equal(data.length,1);
@@ -34,7 +32,7 @@ test('Observe nested object', function (t) {
 	var oo = new ObjectObservable({ a: { b: 1 } });
 	//Set event
 	oo.on('changes',function(data) {
-		debug('ObjectObservable.changed %o',data); 
+		debug('ObjectObservable.changed %o',data);
 		t.ok(true,"Changed");
 		//Changes from oo.a.b = 2;
 		t.equal(data.length,1);
@@ -52,7 +50,7 @@ test('Observe nested array', function (t) {
 	var oo = new ObjectObservable({ a: [ 1 ] });
 	//Set event
 	oo.on('changes',function(data) {
-		debug('ObjectObservable.changed %o',data); 
+		debug('ObjectObservable.changed %o',data);
 		t.ok(true,"Changed");
 		//Add element
 		t.equal(data.length,2);
@@ -70,13 +68,13 @@ test('Observe nested array', function (t) {
 
 test('Observe added nested object', function (t) {
 	var i = 0;
-	
+
 	t.plan(10);
 	//Create reactive object
 	var oo = new ObjectObservable({ a: null });
 	//Set event
 	oo.on('changes',function(data) {
-		debug('ObjectObservable.changed %o',data); 
+		debug('ObjectObservable.changed %o',data);
 		t.ok(true,"Changed");
 		if (i==0)
 		{
@@ -115,7 +113,7 @@ test('Observe nested object delete', function (t) {
 	var oo = new ObjectObservable({ a:  { b: 1 }});
 	//Set event
 	oo.on('changes',function(data) {
-		debug('ObjectObservable.changed %o',data); 
+		debug('ObjectObservable.changed %o',data);
 		t.ok(true,"Changed");
 		if (i==0)
 		{
@@ -153,7 +151,7 @@ test('Observe array delete', function (t) {
 	var oo = new ObjectObservable({ a: [{id: 1},{id:2}] });
 	//Set event
 	oo.on('changes',function(data) {
-		debug('ObjectObservable.changed %o',data); 
+		debug('ObjectObservable.changed %o',data);
 		t.ok(true,"Changed");
 		if (i==0)
 		{
@@ -176,9 +174,9 @@ test('Observe array delete', function (t) {
 		}
 		i++;
 	});
-	//delete first 
+	//delete first
 	oo.a.splice(0,1);
-	
+
 	//Change it later
 	setTimeout (function() {
 		debug('Changed nested object');
@@ -195,7 +193,7 @@ test('Observe array add', function (t) {
 	var oo = new ObjectObservable({ a: [{id: 1},{id:2}] });
 	//Set event
 	oo.on('changes',function(data) {
-		debug('ObjectObservable.changed %o',data); 
+		debug('ObjectObservable.changed %o',data);
 		t.ok(true,"Changed");
 		if (i==0)
 		{
@@ -219,9 +217,9 @@ test('Observe array add', function (t) {
 		}
 		i++;
 	});
-	//delete first 
+	//delete first
 	oo.a.push({id:3});
-	
+
 	//Change it later
 	setTimeout (function() {
 		debug('Changed nested object');
@@ -253,7 +251,7 @@ test('Nested observed objects', function (t) {
 	var oo2 = new ObjectObservable({});
 	//Set event
 	oo.on('changes',function(data) {
-		debug('ObjectObservable.changed %o',data); 
+		debug('ObjectObservable.changed %o',data);
 		t.ok(true,"Changed");
 		if (i==0)
 		{
@@ -278,7 +276,7 @@ test('Nested observed objects', function (t) {
 	});
 	//Set event
 	oo2.on('changes',function(data) {
-		debug('ObjectObservable.changed %o',data); 
+		debug('ObjectObservable.changed %o',data);
 		t.ok(true,"Changed");
 		if (j==0)
 		{
@@ -302,7 +300,7 @@ test('Nested observed objects', function (t) {
 	oo.oo2 = oo2;
 	//Now change boths
 	oo.oo2.a = 2;
-	
+
 	//Change it later
 	setTimeout (function() {
 		debug('Deleting nested object and changing it again');
@@ -323,7 +321,7 @@ test('Nested observed objects (II)', function (t) {
 	var oo = new ObjectObservable({oo2:oo2});
 	//Set event
 	oo.on('changes',function(data) {
-		debug('ObjectObservable.changed %o',data); 
+		debug('ObjectObservable.changed %o',data);
 		t.ok(true,"Changed");
 		if (i==0)
 		{
@@ -349,7 +347,7 @@ test('Nested observed objects (II)', function (t) {
 	});
 	//Set event
 	oo2.on('changes',function(data) {
-		debug('ObjectObservable.changed %o',data); 
+		debug('ObjectObservable.changed %o',data);
 		t.ok(true,"Changed");
 		if (j==0)
 		{
@@ -376,7 +374,7 @@ test('Nested observed objects (II)', function (t) {
 	//Now change both
 	oo2.b = 3;
 	oo.oo2.a = 2;
-	
+
 	//Change it later
 	setTimeout (function() {
 		debug('Deleting nested object and changing it again');

@@ -1,6 +1,6 @@
 {
   "name": "object-observable",
-  "version": "0.1.8",
+  "version": "0.2.0",
   "description": "Obvservable object based on Proxies",
   "main": "index.js",
   "scripts": {
@@ -16,6 +16,7 @@
   },
   "homepage": "https://github.com/eface2face/object-observable",
   "devDependencies": {
+    "browserify": "^13.0.0",
     "tape": "^4.2.0"
   },
   "dependencies": {

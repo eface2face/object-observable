@@ -95,7 +95,7 @@ ObjectObservable.create = function (object,params)
 					if( !ObjectObservable.isObservable(value))
 					{
 						//Create a new proxy
-						value = ObjectObservable.create(value);
+						value = ObjectObservable.create(value,params);
 						//Set it back
 						cloned[i] = value;
 					}
@@ -126,7 +126,7 @@ ObjectObservable.create = function (object,params)
 						if( !ObjectObservable.isObservable(value))
 						{
 							//Create a new proxy
-							value = ObjectObservable.create(value);
+							value = ObjectObservable.create(value,params);
 							//Set it back
 							cloned[key] = value;
 						}
@@ -170,7 +170,7 @@ ObjectObservable.create = function (object,params)
 						//Is it already observable?
 						if( !ObjectObservable.isObservable(value))
 							//Create a new proxy
-							value = ObjectObservable.create(value);
+							value = ObjectObservable.create(value,params);
 						//Set it before setting the listener or we will get events that we don't expect
 						target[key] = value;
 						//Set us as listeners

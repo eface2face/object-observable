@@ -81,7 +81,7 @@ test('Observe nested object', function (t) {
 	oo.a.b = 2;
 });
 
-test('Observe clone check they are eqcual', function (t) {
+test('Observe clone and check they are eqcual', function (t) {
 
 	t.plan(1);
 	//Plain object

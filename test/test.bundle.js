@@ -4581,6 +4581,9 @@ ObjectObservable.create = function (object,params)
 					}
 					//Set us as listeners
 					ObjectObservable.observeInmediate(value,addListener(i));
+				} else if (params.clone) {
+					//Set it on cloned array
+					cloned[i] = value;
 				}
 			}
 		} else {
@@ -4609,6 +4612,9 @@ ObjectObservable.create = function (object,params)
 						}
 						//Set us as listeners
 						ObjectObservable.observeInmediate(value,addListener(key));
+					} else if (params.clone) {
+						//Set it on clone object
+						cloned[key] = value;
 					}
 				}
 			}
@@ -7467,6 +7473,20 @@ test('Observe nested object', function (t) {
 	oo.a.b = 2;
 });
 
+test('Observe clone check they are eqcual', function (t) {
+
+	t.plan(1);
+	//Plain object
+	var o = { a: { b: 1 },c: 2};
+	//Create reactive object
+	var oo = ObjectObservable.create(o,{
+		clone: true
+	});
+	
+	//Check it has not changed nested object of plain obejct
+	t.ok(JSON.stringify(o)===JSON.stringify(oo),"Nested object of plain object is preserved");
+
+});
 
 test('Observe clone nested object', function (t) {
 

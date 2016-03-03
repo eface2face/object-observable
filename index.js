@@ -101,6 +101,9 @@ ObjectObservable.create = function (object,params)
 					}
 					//Set us as listeners
 					ObjectObservable.observeInmediate(value,addListener(i));
+				} else if (params.clone) {
+					//Set it on cloned array
+					cloned[i] = value;
 				}
 			}
 		} else {
@@ -129,6 +132,9 @@ ObjectObservable.create = function (object,params)
 						}
 						//Set us as listeners
 						ObjectObservable.observeInmediate(value,addListener(key));
+					} else if (params.clone) {
+						//Set it on clone object
+						cloned[key] = value;
 					}
 				}
 			}

@@ -10,8 +10,6 @@ test('Observe simple object', function (t) {
 
 	t.plan(5);
 
-	var o = { a: 1 };
-	
 	//Create reactive object
 	var oo = ObjectObservable.create({ a: 1 });
 
@@ -28,6 +26,28 @@ test('Observe simple object', function (t) {
 	
 	//Change property
 	oo.a = 2;
+});
+
+test('Observe date object', function (t) {
+
+	t.plan(5);
+
+	//Create reactive object
+	var oo = ObjectObservable.create({ d: new Date() });
+
+	//Set event
+	ObjectObservable.observe(oo,function(data) {
+		debug('ObjectObservable.changed %o',data);
+		t.ok(true,"Changed");
+		//Changes from oo.a = 2;
+		t.equal(data.length,1);
+		t.equal(data[0].path,'d.setYear');
+		t.equal(data[0].key,'setYear');
+		t.equal(data[0].value.getFullYear(),2000);
+	});
+	
+	//Change property
+	oo.d.setYear(2000);
 });
 
 test('UnObserve simple object', function (t) {

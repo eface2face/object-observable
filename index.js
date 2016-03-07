@@ -150,9 +150,33 @@ ObjectObservable.create = function (object,params)
 					//Check if it is requesting listeners
 					if (key===prefix)
 						return emitter;
-
 					//debug("%o get %s",target,key);
-					return target[key];
+					//HACK: https://bugs.chromium.org/p/v8/issues/detail?id=4814
+					if (target instanceof Date)
+					{
+						//if it is a setter
+						if (key.substring().substr(0,3)==='set')
+						{
+							//Store previous value
+							var old = new Date(target);
+							//Set timer at end of this execution
+							//It is best we can do
+							asap(function(){
+								//Fire change
+								changed({
+									type: 'set',
+									target: target,
+									key: key,
+									value: target,
+									old: old
+								},key);
+							});
+						}
+						//Return binded method
+						return target[key].bind(target);
+					} else
+						//Return as it is
+						return target[key];
 				},
 				set: function (target, key, value) {
 					//Get the previous value

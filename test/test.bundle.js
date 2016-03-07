@@ -4575,7 +4575,7 @@ ObjectObservable.create = function (object,params)
 					if( !ObjectObservable.isObservable(value))
 					{
 						//Create a new proxy
-						value = ObjectObservable.create(value);
+						value = ObjectObservable.create(value,params);
 						//Set it back
 						cloned[i] = value;
 					}
@@ -4606,7 +4606,7 @@ ObjectObservable.create = function (object,params)
 						if( !ObjectObservable.isObservable(value))
 						{
 							//Create a new proxy
-							value = ObjectObservable.create(value);
+							value = ObjectObservable.create(value,params);
 							//Set it back
 							cloned[key] = value;
 						}
@@ -4630,9 +4630,33 @@ ObjectObservable.create = function (object,params)
 					//Check if it is requesting listeners
 					if (key===prefix)
 						return emitter;
-
 					//debug("%o get %s",target,key);
-					return target[key];
+					//HACK: https://bugs.chromium.org/p/v8/issues/detail?id=4814
+					if (target instanceof Date)
+					{
+						//if it is a setter
+						if (key.substring().substr(0,3)==='set')
+						{
+							//Store previous value
+							var old = new Date(target);
+							//Set timer at end of this execution
+							//It is best we can do
+							asap(function(){
+								//Fire change
+								changed({
+									type: 'set',
+									target: target,
+									key: key,
+									value: target,
+									old: old
+								},key);
+							});
+						}
+						//Return binded method
+						return target[key].bind(target);
+					} else
+						//Return as it is
+						return target[key];
 				},
 				set: function (target, key, value) {
 					//Get the previous value
@@ -4650,7 +4674,7 @@ ObjectObservable.create = function (object,params)
 						//Is it already observable?
 						if( !ObjectObservable.isObservable(value))
 							//Create a new proxy
-							value = ObjectObservable.create(value);
+							value = ObjectObservable.create(value,params);
 						//Set it before setting the listener or we will get events that we don't expect
 						target[key] = value;
 						//Set us as listeners
@@ -7402,8 +7426,6 @@ test('Observe simple object', function (t) {
 
 	t.plan(5);
 
-	var o = { a: 1 };
-	
 	//Create reactive object
 	var oo = ObjectObservable.create({ a: 1 });
 
@@ -7420,6 +7442,28 @@ test('Observe simple object', function (t) {
 	
 	//Change property
 	oo.a = 2;
+});
+
+test('Observe date object', function (t) {
+
+	t.plan(5);
+
+	//Create reactive object
+	var oo = ObjectObservable.create({ d: new Date() });
+
+	//Set event
+	ObjectObservable.observe(oo,function(data) {
+		debug('ObjectObservable.changed %o',data);
+		t.ok(true,"Changed");
+		//Changes from oo.a = 2;
+		t.equal(data.length,1);
+		t.equal(data[0].path,'d.setYear');
+		t.equal(data[0].key,'setYear');
+		t.equal(data[0].value.getFullYear(),2000);
+	});
+	
+	//Change property
+	oo.d.setYear(2000);
 });
 
 test('UnObserve simple object', function (t) {
@@ -7473,7 +7517,7 @@ test('Observe nested object', function (t) {
 	oo.a.b = 2;
 });
 
-test('Observe clone check they are eqcual', function (t) {
+test('Observe clone and check they are eqcual', function (t) {
 
 	t.plan(1);
 	//Plain object

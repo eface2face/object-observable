@@ -152,28 +152,33 @@ ObjectObservable.create = function (object,params)
 						return emitter;
 					//debug("%o get %s",target,key);
 					//HACK: https://bugs.chromium.org/p/v8/issues/detail?id=4814
-					if (target instanceof Date)
+					if (target instanceof Date && typeof target[key] === 'function' && Date.prototype.hasOwnProperty(key))
 					{
 						//if it is a setter
-						if (key.substring().substr(0,3)==='set')
+						if (key.substr(0,3)==='set')
 						{
-							//Store previous value
-							var old = new Date(target);
-							//Set timer at end of this execution
-							//It is best we can do
-							asap(function(){
+							//Return wrapped function
+							return function()
+							{
+								//Get setted attribute
+								var setted = key.substr(3,key.length).toLowerCase();
+								//Store previous value
+								var old = new Date(target);
+								//Run setter
+								target[key].apply(target,arguments);
 								//Fire change
 								changed({
 									type: 'set',
-									target: target,
-									key: key,
+									target: setted,
+									key: setted,
 									value: target,
 									old: old
-								},key);
-							});
+								},null);
+							}
+						} else {
+							//Return binded method
+							return target[key].bind(target);
 						}
-						//Return binded method
-						return target[key].bind(target);
 					} else
 						//Return as it is
 						return target[key];

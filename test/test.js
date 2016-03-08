@@ -41,8 +41,8 @@ test('Observe date object', function (t) {
 		t.ok(true,"Changed");
 		//Changes from oo.a = 2;
 		t.equal(data.length,1);
-		t.equal(data[0].path,'d.setYear');
-		t.equal(data[0].key,'setYear');
+		t.equal(data[0].path,'d');
+		t.equal(data[0].key,'year');
 		t.equal(data[0].value.getFullYear(),2000);
 	});
 	

@@ -50,6 +50,13 @@ And then:
 ```javascript
 var ObjectObservable = require('object-observable');
 ```
+## Browser compatibility
+
+* Chrome since version 49.0
+* Firefox  since version 18
+* Edge since version 13 (10586)
+* IE not supported
+* Safari not supported
 
 ## Demo
 Try it on [jsfiddle](https://jsfiddle.net/L109thvm/1)

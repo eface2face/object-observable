@@ -3,6 +3,7 @@ var EventEmitter = require('events');
 // var debug = require('debug')('object-observable');
 
 var prefix = '__OBJECT_OBSERVABLE__PREFIX__' + new Date()+'__';
+var rawprefix = prefix+'_RAW_';
 
 var ObjectObservable = {};
 
@@ -142,7 +143,7 @@ ObjectObservable.create = function (object,params)
 	}
 
 	//Create proxy for object
-	var proxy = new Proxy(
+	return new Proxy(
 			cloned,
 			//Proxy handler object
 			{
@@ -150,6 +151,10 @@ ObjectObservable.create = function (object,params)
 					//Check if it is requesting listeners
 					if (key===prefix)
 						return emitter;
+					//Check if ti was requesting raw
+					if (key===rawprefix)
+						//Return base object
+						return cloned;
 					//debug("%o get %s",target,key);
 					//HACK: https://bugs.chromium.org/p/v8/issues/detail?id=4814
 					if (target instanceof Date && typeof target[key] === 'function' && Date.prototype.hasOwnProperty(key))
@@ -250,13 +255,6 @@ ObjectObservable.create = function (object,params)
 				}
 			}
 		);
-	
-	//Allow to get raw original object
-	proxy.getRaw = function() {
-		return cloned;
-	};
-	
-	return proxy;
 };
 
 ObjectObservable.isObservable = function(object)
@@ -304,6 +302,18 @@ ObjectObservable.unobserve = function(object,listener)
 	
 	//UnListen
 	emitter.removeListener('changes',listener);
+};
+
+ObjectObservable.getRawObject = function(object)
+{
+	//Get raw
+	var raw = object[rawprefix];
+	//Check if it is observable
+	if (!raw)
+		throw new Error('Object is not observable');
+	
+	//Return raw object
+	return raw;
 };
 
 ObjectObservable.observeInmediate = function(object,listener)

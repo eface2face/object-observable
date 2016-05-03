@@ -1,6 +1,6 @@
 {
   "name": "object-observable",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "description": "Obvservable object based on Proxies",
   "main": "index.js",
   "scripts": {

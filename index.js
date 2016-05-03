@@ -142,7 +142,7 @@ ObjectObservable.create = function (object,params)
 	}
 
 	//Create proxy for object
-	return new Proxy(
+	var proxy = new Proxy(
 			cloned,
 			//Proxy handler object
 			{
@@ -250,6 +250,13 @@ ObjectObservable.create = function (object,params)
 				}
 			}
 		);
+	
+	//Allow to get raw original object
+	proxy.getRaw = function() {
+		return cloned;
+	};
+	
+	return proxy;
 };
 
 ObjectObservable.isObservable = function(object)

@@ -160,7 +160,7 @@ ObjectObservable.create = function (object,params)
 					if (target instanceof Date && typeof target[key] === 'function' && Date.prototype.hasOwnProperty(key))
 					{
 						//if it is a setter
-						if (key.substr(0,3)==='set')
+						if (key.substr && key.substr(0,3)==='set')
 						{
 							//Return wrapped function
 							return function()
@@ -180,6 +180,8 @@ ObjectObservable.create = function (object,params)
 									old: old
 								},null);
 							}
+						} if (key=="Symbol(Symbol.toPrimitive)") {
+							return Date.prototype[Symbol.toPrimitive].bind(target);
 						} else {
 							//Return binded method
 							return target[key].bind(target);

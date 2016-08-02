@@ -181,6 +181,7 @@ ObjectObservable.create = function (object,params)
 								},null);
 							}
 						} if (key=="Symbol(Symbol.toPrimitive)") {
+							//Return Symbol.toPromitive hinter
 							return Date.prototype[Symbol.toPrimitive].bind(target);
 						} else {
 							//Return binded method

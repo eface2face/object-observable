@@ -50,6 +50,25 @@ test('Observe date object', function (t) {
 	oo.d.setYear(2000);
 });
 
+test('Date preset object', function (t) {
+
+	t.plan(2);
+	
+	var d = new Date();
+	
+	//Set date
+	d.setYear(2000);
+	d.setDate(1);
+	d.setMonth(1);
+
+	//Create reactive object
+	var oo = ObjectObservable.create({ d: d });
+
+	//Changes from oo.a = 2;
+	t.equal(d.getTime(),oo.d.getTime());
+	t.equal(" " +d," " +oo.d);
+});
+
 test('UnObserve simple object', function (t) {
 
 	t.plan(6);

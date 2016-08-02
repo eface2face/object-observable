@@ -4483,6 +4483,7 @@ var EventEmitter = require('events');
 // var debug = require('debug')('object-observable');
 
 var prefix = '__OBJECT_OBSERVABLE__PREFIX__' + new Date()+'__';
+var rawprefix = prefix+'_RAW_';
 
 var ObjectObservable = {};
 
@@ -4630,12 +4631,16 @@ ObjectObservable.create = function (object,params)
 					//Check if it is requesting listeners
 					if (key===prefix)
 						return emitter;
+					//Check if ti was requesting raw
+					if (key===rawprefix)
+						//Return base object
+						return cloned;
 					//debug("%o get %s",target,key);
 					//HACK: https://bugs.chromium.org/p/v8/issues/detail?id=4814
 					if (target instanceof Date && typeof target[key] === 'function' && Date.prototype.hasOwnProperty(key))
 					{
 						//if it is a setter
-						if (key.substr(0,3)==='set')
+						if (key.substr && key.substr(0,3)==='set')
 						{
 							//Return wrapped function
 							return function()
@@ -4655,6 +4660,9 @@ ObjectObservable.create = function (object,params)
 									old: old
 								},null);
 							}
+						} if (key=="Symbol(Symbol.toPrimitive)") {
+							//Return Symbol.toPromitive hinter
+							return Date.prototype[Symbol.toPrimitive].bind(target);
 						} else {
 							//Return binded method
 							return target[key].bind(target);
@@ -4777,6 +4785,18 @@ ObjectObservable.unobserve = function(object,listener)
 	
 	//UnListen
 	emitter.removeListener('changes',listener);
+};
+
+ObjectObservable.getRawObject = function(object)
+{
+	//Get raw
+	var raw = object[rawprefix];
+	//Check if it is observable
+	if (!raw)
+		throw new Error('Object is not observable');
+	
+	//Return raw object
+	return raw;
 };
 
 ObjectObservable.observeInmediate = function(object,listener)
@@ -7469,6 +7489,25 @@ test('Observe date object', function (t) {
 	
 	//Change property
 	oo.d.setYear(2000);
+});
+
+test('Date preset object', function (t) {
+
+	t.plan(2);
+	
+	var d = new Date();
+	
+	//Set date
+	d.setYear(2000);
+	d.setDate(1);
+	d.setMonth(1);
+
+	//Create reactive object
+	var oo = ObjectObservable.create({ d: d });
+
+	//Changes from oo.a = 2;
+	t.equal(d.getTime(),oo.d.getTime());
+	t.equal(" " +d," " +oo.d);
 });
 
 test('UnObserve simple object', function (t) {

@@ -183,6 +183,8 @@ ObjectObservable.create = function (object,params)
 						} if (key=="Symbol(Symbol.toPrimitive)") {
 							//Return Symbol.toPromitive hinter
 							return Date.prototype[Symbol.toPrimitive].bind(target);
+						} else if (key==="[Symbol.toStringTag]") {
+							return 'Date';
 						} else {
 							//Return binded method
 							return target[key].bind(target);

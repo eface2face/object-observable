@@ -4671,6 +4671,9 @@ ObjectObservable.create = function (object,params)
 						//Return as it is
 						return target[key];
 				},
+				getPrototypeOf: function(target) {
+					return target instanceof Date ? Date.prototype : target.prototype ;
+				},
 				set: function (target, key, value) {
 					//Get the previous value
 					var old = target[key];

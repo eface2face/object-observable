@@ -225,8 +225,8 @@ ObjectObservable.create = function (object,params)
 						value: value,
 						old: old
 					},key);
-					//return new value
-					return value;
+					//The set method should return a boolean value. Return true to indicate that assignment succeeded. If the set method returns false, and the assignment happened in strict-mode code, a TypeError will be thrown.
+					return true;
 				},
 				deleteProperty: function (target, key) {
 					//debug("%o deleteProperty %s",target,key);
